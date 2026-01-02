@@ -97,7 +97,7 @@
 
 {% block nav-global %}
 <div style="padding: 8px 16px;">
-    <a href="{{ link_presenca_hoje }}"
+    <a href="{{ {% url 'lista_presenca_hoje' %} }}"
        target="_blank"
        rel="noopener noreferrer"
        style="
@@ -134,3 +134,4 @@
 </div>
 {{ block.super }}
 {% endblock %}
+
