@@ -1,0 +1,136 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        body {
+            background: radial-gradient(circle at top, #eef3f8 0, #d2dde8 45%, #c3d0dd 100%);
+        }
+
+        #header {
+            background: #1f6d96;
+            border-bottom: 1px solid #175270;
+        }
+
+        #header h1 a,
+        #header h1 {
+            color: #ffffff;
+        }
+
+        .dashboard #content {
+            background: transparent;
+        }
+
+        .dashboard #content-main {
+            max-width: 1200px;
+            margin: 30px auto 40px auto;
+            padding: 0 20px;
+        }
+
+        .dashboard .module,
+        #recent-actions-module {
+            background: rgba(255,255,255,0.96);
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 8px 18px rgba(38, 64, 97, 0.25);
+            overflow: hidden;
+        }
+
+        .dashboard .module caption,
+        .dashboard .module h2 {
+            background: linear-gradient(90deg, #1f6d96 0, #38a0c3 100%);
+            color: #ffffff;
+            font-weight: 600;
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+
+        #content-main .module table tr:nth-child(odd) {
+            background: #f8fafc;
+        }
+
+        #content-main .module table tr:nth-child(even) {
+            background: #f1f5f9;
+        }
+
+        #content-main .module table td,
+        #content-main .module table th {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #content-main .module table a {
+            color: #1f3c88;
+        }
+
+        #content-main .module table a:hover {
+            color: #122459;
+            text-decoration: underline;
+        }
+
+        #content-related {
+            margin-top: 30px;
+        }
+
+        #content-related h2 {
+            background: linear-gradient(90deg, #1f6d96 0, #38a0c3 100%);
+            color: #fff;
+            padding: 9px 14px;
+            border-radius: 10px 10px 0 0;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+
+        #recent-actions-module ul.actionlist li {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        #recent-actions-module ul.actionlist a {
+            color: #1f3c88;
+        }
+
+        #recent-actions-module ul.actionlist a:hover {
+            color: #122459;
+        }
+    </style>
+{% endblock %}
+
+
+{% block nav-global %}
+<div style="padding: 8px 16px;">
+    <a href="{{ link_presenca_hoje }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       style="
+           display:inline-block;
+           padding:8px 16px;
+           background:#2e7d32;
+           color:white;
+           border-radius:4px;
+           text-decoration:none;
+           font-weight:bold;
+           font-size:13px;
+           box-shadow:0 2px 6px rgba(0,0,0,0.4);
+           margin-right:8px;
+       ">
+        📋 Presença na obra (hoje)
+    </a>
+
+    <a href="{% url 'registrar_entrada_saida' %}"
+       target="_blank"
+       rel="noopener noreferrer"
+       style="
+           display:inline-block;
+           padding:8px 16px;
+           background:#f97316;
+           color:white;
+           border-radius:4px;
+           text-decoration:none;
+           font-weight:bold;
+           font-size:13px;
+           box-shadow:0 2px 6px rgba(0,0,0,0.4);
+       ">
+        ⏱️ Entrada / Saída
+    </a>
+</div>
+{{ block.super }}
+{% endblock %}

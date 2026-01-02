@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturar Foto - {{ funcionario.nome }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #121212;
+            color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+        }
+        .titulo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .titulo span {
+            font-size: 30px;
+        }
+        .dados-func {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .dados-func strong {
+            color: #4caf50;
+        }
+        .alerta {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .alerta.erro {
+            background-color: #ff5252;
+            color: #fff;
+        }
+        .alerta.info {
+            background-color: #1976d2;
+            color: #fff;
+        }
+        .video-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        video, canvas {
+            border-radius: 8px;
+            background-color: #000;
+            max-width: 100%;
+        }
+        .botoes {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn {
+            border: none;
+            border-radius: 4px;
+            padding: 10px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-capturar {
+            background-color: #2196f3;
+            color: #fff;
+        }
+        .btn-salvar {
+            background-color: #4caf50;
+            color: #fff;
+        }
+        .btn-voltar {
+            background-color: #757575;
+            color: #fff;
+            text-decoration: none;
+            line-height: 1.2;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .mensagem {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .mensagem.ok {
+            color: #4caf50;
+        }
+        .mensagem.erro {
+            color: #ff5252;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="titulo">
+            <span>📸</span> Capturar Foto do Funcionário
+        </div>
+        <div class="dados-func">
+            <p><strong>Nome:</strong> {{ funcionario.nome }}</p>
+            <p><strong>Empresa:</strong> {{ funcionario.empresa.nome }}</p>
+            <p><strong>Função:</strong> {{ funcionario.funcao }}</p>
+        </div>
+    </div>
+
+    <div id="mensagem-erro" class="alerta erro" style="display:none;"></div>
+    <div id="mensagem-info" class="alerta info" style="display:none;"></div>
+
+    <div class="card">
+        <div class="video-container">
+            <video id="video" width="640" height="480" autoplay playsinline muted></video>
+        </div>
+        <div class="video-container">
+            <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+        </div>
+
+        <div class="botoes">
+            <button id="btnCapturar" class="btn btn-capturar">📷 Capturar Foto</button>
+            <button id="btnSalvar" class="btn btn-salvar" disabled>✓ Salvar Foto</button>
+            <a href="/admin/funcionarios/funcionario/{{ funcionario.id }}/change/" class="btn btn-voltar">← Voltar</a>
+        </div>
+
+        <div id="mensagem" class="mensagem"></div>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const btnCapturar = document.getElementById('btnCapturar');
+    const btnSalvar = document.getElementById('btnSalvar');
+    const mensagem = document.getElementById('mensagem');
+    const msgErro = document.getElementById('mensagem-erro');
+    const msgInfo = document.getElementById('mensagem-info');
+    let stream = null;
+    let fotoCapturada = false;
+    const urlSalvar = '{% url "salvar_foto_funcionario" %}';
+    const funcionarioId = parseInt('{{ funcionario_id }}');
+
+    function mostrarErro(texto) {
+        msgErro.style.display = 'block';
+        msgErro.textContent = texto;
+    }
+    function limparErros() {
+        msgErro.style.display = 'none';
+        msgErro.textContent = '';
+    }
+    function mostrarInfo(texto) {
+        msgInfo.style.display = 'block';
+        msgInfo.textContent = texto;
+    }
+    function limparInfo() {
+        msgInfo.style.display = 'none';
+        msgInfo.textContent = '';
+    }
+
+    async function iniciarCamera() {
+        try {
+            limparErros();
+            mostrarInfo('Iniciando câmera, aguarde...');
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                limparInfo();
+                mostrarInfo('Câmera pronta. Posicione o rosto e clique em "Capturar Foto".');
+            };
+        } catch (error) {
+            mostrarErro('Erro ao acessar câmera: ' + error.message);
+        }
+    }
+
+    btnCapturar.addEventListener('click', () => {
+        limparErros();
+        limparInfo();
+        if (!canvas) {
+            mostrarErro('Canvas não encontrado na página.');
+            return;
+        }
+        const ctx = canvas.getContext('2d');
+        canvas.style.display = 'block';
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        fotoCapturada = true;
+        btnSalvar.disabled = false;
+        mensagem.className = 'mensagem ok';
+        mensagem.textContent = 'Foto capturada! Agora clique em "Salvar Foto".';
+    });
+
+    btnSalvar.addEventListener('click', async () => {
+        limparErros();
+        limparInfo();
+        if (!fotoCapturada) {
+            mostrarErro('Capture a foto primeiro.');
+            return;
+        }
+        try {
+            btnSalvar.disabled = true;
+            btnSalvar.textContent = 'Salvando...';
+
+            const dataURL = canvas.toDataURL('image/jpeg');
+            const response = await fetch(urlSalvar, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    funcionario_id: funcionarioId,
+                    imagem: dataURL
+                })
+            });
+
+            const data = await response.json();
+            if (data.sucesso) {
+                mensagem.className = 'mensagem ok';
+                mensagem.textContent = 'Foto salva com sucesso! Redirecionando...';
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1000);
+            } else {
+                mostrarErro(data.mensagem || 'Erro ao salvar foto.');
+                btnSalvar.disabled = false;
+                btnSalvar.textContent = '✓ Salvar Foto';
+            }
+        } catch (error) {
+            mostrarErro('Erro ao enviar foto: ' + error.message);
+            btnSalvar.disabled = false;
+            btnSalvar.textContent = '✓ Salvar Foto';
+        }
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    window.addEventListener('load', iniciarCamera);
+</script>
+</body>
+</html>
