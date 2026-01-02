@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Entrada/Saída - Leben 225</title>
+    {% load static %}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top, #eef3f8 0, #d2dde8 45%, #c3d0dd 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(38, 64, 97, 0.15);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            color: #1f6d96;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .webcam-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 18px rgba(38, 64, 97, 0.25);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .webcam-card h2 {
+            color: #1f6d96;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        #webcam {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            background: #000;
+            border-radius: 8px;
+            border: 3px solid #1f6d96;
+            margin-bottom: 20px;
+        }
+        
+        .buttons-group {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 140px;
+        }
+        
+        .btn-entrada {
+            background: #22c55e;
+            color: white;
+        }
+        
+        .btn-entrada:hover {
+            background: #16a34a;
+            transform: scale(1.05);
+        }
+        
+        .btn-saida {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-saida:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .feedback {
+            margin-top: 15px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .feedback.success {
+            background: #dcfce7;
+            color: #15803d;
+            display: block;
+            border-left: 4px solid #15803d;
+        }
+        
+        .feedback.error {
+            background: #fee2e2;
+            color: #b91c1c;
+            display: block;
+            border-left: 4px solid #b91c1c;
+        }
+        
+        .acessos-list {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 18px rgba(38, 64, 97, 0.25);
+        }
+        
+        .acessos-list h2 {
+            color: #1f6d96;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .acesso-item {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .acesso-item:last-child {
+            border-bottom: none;
+        }
+        
+        .acesso-nome {
+            font-weight: 600;
+            color: #1f2933;
+        }
+        
+        .acesso-empresa {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .acesso-hora {
+            background: #f1f5f9;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1f3c88;
+        }
+        
+        .status-entrada {
+            color: #22c55e;
+            font-weight: 600;
+        }
+        
+        .status-saida {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1f6d96;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>⚡ Entrada/Saída - Leben 225</h1>
+        <p>{{ data|date:"d/m/Y" }}</p>
+    </div>
+    
+    <div class="main-content">
+        <!-- Webcam Section -->
+        <div class="webcam-card">
+            <h2>📷 Câmera</h2>
+            <video id="webcam" autoplay playsinline></video>
+            <div class="buttons-group">
+                <button class="btn btn-entrada" id="btnEntrada" onclick="registrarEntrada()">🟢 ENTRADA</button>
+                <button class="btn btn-saida" id="btnSaida" onclick="registrarSaida()">🔴 SAÍDA</button>
+            </div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Processando...</p>
+            </div>
+            <div class="feedback" id="feedback"></div>
+        </div>
+        
+        <!-- Access List Section -->
+        <div class="acessos-list">
+            <h2>📋 Últimos Acessos</h2>
+            <div id="acessosList">
+                {% if acessos_hoje %}
+                    {% for acesso in acessos_hoje %}
+                    <div class="acesso-item">
+                        <div>
+                            <div class="acesso-nome">{{ acesso.funcionario.nome }}</div>
+                            <div class="acesso-empresa">{{ acesso.funcionario.empresa.nome }}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            {% if acesso.hora_entrada %}
+                                <div class="acesso-hora status-entrada">✅ {{ acesso.hora_entrada|time:"H:i" }}</div>
+                            {% endif %}
+                            {% if acesso.hora_saida %}
+                                <div class="acesso-hora status-saida" style="margin-top: 4px;">🚪 {{ acesso.hora_saida|time:"H:i" }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>🚫 Nenhum acesso registrado ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar webcam
+    async function initWebcam() {
+        const video = document.getElementById('webcam');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' }
+            });
+            video.srcObject = stream;
+        } catch (err) {
+            showFeedback('Erro ao acessar câmera: ' + err.message, 'error');
+        }
+    }
+    
+    // Registrar entrada
+    async function registrarEntrada() {
+        await registrarAcesso('entrada');
+    }
+    
+    // Registrar saída
+    async function registrarSaida() {
+        await registrarAcesso('saida');
+    }
+    
+    // Enviar para backend
+    async function registrarAcesso(tipo) {
+        // Aqui virá a lógica de reconhecimento facial
+        // Por enquanto, simular entrada de teste
+        
+        const video = document.getElementById('webcam');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        const imageData = canvas.toDataURL('image/jpeg');
+        
+        showLoading(true);
+        
+        try {
+            // TODO: Implementar reconhecimento facial aqui
+            // Por enquanto, simular com funcionario_id = 1
+            
+            const response = await fetch('/acessos/api/registrar-acesso/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    funcionario_id: 1,  // TODO: Usar ID do rosto detectado
+                    tipo: tipo,
+                    foto: imageData
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.sucesso) {
+                showFeedback('✅ ' + data.mensagem, 'success');
+                // Recarregar lista de acessos após 2 segundos
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showFeedback('❌ Erro: ' + data.erro, 'error');
+            }
+        } catch (err) {
+            showFeedback('❌ Erro na requisição: ' + err.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    // Mostrar feedback
+    function showFeedback(message, type) {
+        const feedback = document.getElementById('feedback');
+        feedback.textContent = message;
+        feedback.className = 'feedback ' + type;
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                feedback.style.display = 'none';
+            }, 3000);
+        }
+    }
+    
+    // Mostrar/esconder loading
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'block' : 'none';
+        document.getElementById('btnEntrada').disabled = show;
+        document.getElementById('btnSaida').disabled = show;
+    }
+    
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Inicializar ao carregar
+    document.addEventListener('DOMContentLoaded', initWebcam);
+</script>
+</body>
+</html>
