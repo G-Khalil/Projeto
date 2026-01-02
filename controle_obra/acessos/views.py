@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -240,3 +240,87 @@ def exportar_relatorio_mensal(request):
     response['Content-Disposition'] = f'attachment; filename="relatorio_presenca_{mes:02d}_{ano}.xlsx"'
     wb.save(response)
     return response
+
+# ============ NOVA VIEW: ENTRADA/SAÍDA COM RECONHECIMENTO FACIAL ============
+
+def registrar_entrada_saida(request):
+    """
+    Página dedicada para registro de entrada/saída com reconhecimento facial.
+    Porteiro usa this, pane para detectar rosto e registrar hora automaticamente.
+    """
+    hoje = timezone.now().date()
+    
+    # Últimos acessos do dia (para mostrar na tela)
+    acessos_hoje = (
+        AcessoObra.objects
+        .filter(data=hoje)
+        .select_related('funcionario', 'funcionario__empresa')
+        .order_by('-id')[:10]  # Últimos 10 registros
+    )
+    
+    # Todos os funcionários para reconhecimento facial
+    funcionarios = Funcionario.objects.all().order_by('nome')
+    
+    context = {
+        'acessos_hoje': acessos_hoje,
+        'funcionarios': funcionarios,
+        'data': hoje,
+    }
+    
+    return render(request, 'acessos/registrar_entrada_saida.html', context)
+
+
+def registrar_acesso_ajax(request):
+    """
+    API AJAX para registrar entrada/saída após reconhecimento facial.
+    Recebe: funcionario_id, tipo (entrada/saida)
+    Retorna: JSON com sucesso/erro e dados do acesso registrado
+    """
+    import json
+    
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        funcionario_id = data.get('funcionario_id')
+        tipo = data.get('tipo')  # 'entrada' ou 'saida'
+        
+        funcionario = Funcionario.objects.get(id=funcionario_id)
+        hoje = timezone.now().date()
+        agora = timezone.now().time()
+        
+        # Buscar ou criar acesso de hoje
+        acesso, criado = AcessoObra.objects.get_or_create(
+            funcionario=funcionario,
+            data=hoje
+        )
+        
+        if tipo == 'entrada':
+            acesso.hora_entrada = agora
+            mensagem = f"✅ Entrada registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        elif tipo == 'saida':
+            acesso.hora_saida = agora
+            mensagem = f"✅ Saída registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        else:
+            return JsonResponse({'erro': 'Tipo inválido'}, status=400)
+        
+        acesso.save()
+        
+        return JsonResponse({
+            'sucesso': True,
+            'mensagem': mensagem,
+            'funcionario': funcionario.nome,
+            'empresa': funcionario.empresa.nome if funcionario.empresa else 'N/A',
+            'tipo': tipo,
+            'hora': agora.strftime('%H:%M:%S'),
+        })
+        
+    except Funcionario.DoesNotExist:
+        return JsonResponse({'erro': 'Funcionário não reconhecido'}, status=404)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
+
+
+from django.http import JsonResponse
+
