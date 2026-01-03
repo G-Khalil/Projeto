@@ -322,5 +322,62 @@ def registrar_acesso_ajax(request):
         return JsonResponse({'erro': str(e)}, status=500)
 
 
-from django.http import JsonResponse
+def lista_funcionarios_entrada_saida(request):
+    """
+    Lista de funcionarios com status de entrada/saida.
+    - Vermelho: Nao chegou na obra
+    - Verde: Ja registrou entrada
+    - Cinza: Ja registrou saida
+    Requer reconhecimento facial para registrar entrada/saida.
+    """
+    hoje = timezone.now().date()
+    
+    # Buscar todos os funcionarios
+    funcionarios = Funcionario.objects.all().order_by('nome')
+    
+    # Preparar lista com status
+    funcionarios_com_status = []
+    
+    for func in funcionarios:
+        # Buscar acesso de hoje para este funcionario
+        acesso_hoje = AcessoObra.objects.filter(
+            funcionario=func,
+            data=hoje
+        ).first()
+        
+        # Determinar status
+        if acesso_hoje is None:
+            status = 'nao_chegou'  # Vermelho
+            status_display = 'Nao chegou'
+            hora_entrada = None
+            hora_saida = None
+        elif acesso_hoje.hora_saida:
+            status = 'saida'  # Cinza
+            status_display = 'Saida registrada'
+            hora_entrada = acesso_hoje.hora_entrada
+            hora_saida = acesso_hoje.hora_saida
+        else:
+            status = 'entrada'  # Verde
+            status_display = 'Entrada registrada'
+            hora_entrada = acesso_hoje.hora_entrada
+            hora_saida = None
+        
+        funcionarios_com_status.append({
+            'id': func.id,
+            'nome': func.nome,
+            'empresa': func.empresa.nome if func.empresa else 'N/A',
+            'status': status,
+            'status_display': status_display,
+            'hora_entrada': hora_entrada,
+            'hora_saida': hora_saida,
+            'tem_foto': hasattr(func, 'foto_biometrica') and func.foto_biometrica,
+        })
+    
+    context = {
+        'funcionarios': funcionarios_com_status,
+        'data': hoje,
+    }
+    
+    return render(request, 'acessos/lista_funcionarios_entrada_saida.html', context)
+
 
