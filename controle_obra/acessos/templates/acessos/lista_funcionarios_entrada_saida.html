@@ -190,6 +190,140 @@
         .stat-nao-chegou .stat-number { color: #ef4444; }
         .stat-entrada .stat-number { color: #22c55e; }
         .stat-saida .stat-number { color: #9ca3af; }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2933;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .recognition-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .recognition-status.loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .recognition-status.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .recognition-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .funcionario-info {
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 4px solid #22c55e;
+        }
+
+        .funcionario-info .nome {
+            font-size: 18px;
+            font-weight: 700;
+            color: #166534;
+            margin-bottom: 5px;
+        }
+
+        .funcionario-info .empresa {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-modal {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .btn-modal.confirm {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-modal.confirm:hover {
+            background: #16a34a;
+        }
+
+        .btn-modal.cancel {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-modal.cancel:hover {
+            background: #d1d5db;
+        }
+
+        .btn-modal:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -201,7 +335,6 @@
 
         <!-- Estatisticas -->
         <div class="stats">
-            {% with nao_chegou=funcionarios|dictsort:"status"|length %}
             <div class="stat-item stat-nao-chegou">
                 <div class="stat-number" id="count-nao-chegou">0</div>
                 <div class="stat-label">Nao chegou</div>
@@ -214,22 +347,27 @@
                 <div class="stat-number" id="count-saida">0</div>
                 <div class="stat-label">Saida</div>
             </div>
-            {% endwith %}
+        </div>
+
+        <!-- Controles globais de reconhecimento -->
+        <div style="display:flex; gap:10px; margin: 10px 0;">
+            <button class="btn-acesso btn-entrada" onclick="startGlobalRecognition('entrada')">Iniciar Auto Entrada</button>
+            <button class="btn-acesso btn-saida" onclick="startGlobalRecognition('saida')">Iniciar Auto Saida</button>
         </div>
 
         <!-- Lista de Funcionarios -->
         <div class="funcionarios-grid">
             {% for funcionario in funcionarios %}
-            <div class="funcionario-card {{ funcionario.status }}">
+            <div class="funcionario-card {{ funcionario.status }}" id="card-{{ funcionario.id }}">
                 <div class="funcionario-nome">{{ funcionario.nome }}</div>
                 <div class="funcionario-empresa">{{ funcionario.empresa }}</div>
                 <div class="status-badge {{ funcionario.status }}">
                     {% if funcionario.status == "nao_chegou" %}
-                        Red Nao chegou
+                        Nao chegou
                     {% elif funcionario.status == "entrada" %}
-                        Green Entrada registrada
+                        Entrada registrada
                     {% else %}
-                        Gray Saida registrada
+                        Saida registrada
                     {% endif %}
                 </div>
                 <div class="horarios">
@@ -241,8 +379,11 @@
                     {% endif %}
                 </div>
                 {% if funcionario.tem_foto %}
-                    <button class="btn-acesso btn-entrada" onclick="registrarAcesso({{ funcionario.id }}, 'entrada')">Registrar Entrada</button>
-                    <button class="btn-acesso btn-saida" onclick="registrarAcesso({{ funcionario.id }}, 'saida')">Registrar Saida</button>
+                    {% if funcionario.status == 'nao-chegou' %}
+                        <button class="btn-acesso btn-entrada" onclick="abrirModalFacial({{ funcionario.id }}, '{{ funcionario.nome }}', '{{ funcionario.empresa }}', 'entrada')">📷 Entrada</button>
+                    {% elif funcionario.status == 'entrada' %}
+                        <button class="btn-acesso btn-saida" onclick="abrirModalFacial({{ funcionario.id }}, '{{ funcionario.nome }}', '{{ funcionario.empresa }}', 'saida')">📷 Saida</button>
+                    {% endif %}
                 {% else %}
                     <p style="color: #999; font-size: 12px; margin-top: 10px;">Foto nao cadastrada</p>
                 {% endif %}
@@ -255,32 +396,317 @@
         </div>
     </div>
 
+    <!-- Modal para Reconhecimento Facial -->
+    <div class="modal" id="modalFacial">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">Reconhecimento Facial</div>
+            
+            <div class="video-container">
+                <video id="videoFacial" autoplay playsinline></video>
+            </div>
+
+            <div class="funcionario-info" id="funcInfo" style="display: none;">
+                <div class="nome" id="infoNome"></div>
+                <div class="empresa" id="infoEmpresa"></div>
+            </div>
+
+            <div class="recognition-status loading" id="statusMsg">
+                ⏳ Inicializando câmera...
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-modal confirm" id="btnCapture" onclick="captureAndSend()" style="display: none;">📸 Capturar e Registrar</button>
+                <button class="btn-modal cancel" onclick="fecharModal()">✕ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function registrarAcesso(funcionarioId, tipo) {
-            if (confirm(`Confirmar ${tipo} para este funcionario?`)) {
-                // TODO: Implementar reconhecimento facial
-                fetch('/acessos/api/registrar-acesso/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({
-                        funcionario_id: funcionarioId,
-                        tipo: tipo
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.sucesso) {
-                        alert(data.mensagem);
-                        location.reload();
-                    } else {
-                        alert('Erro: ' + data.erro);
-                    }
-                })
-                .catch(err => alert('Erro: ' + err));
+        let videoStream = null;
+        let funcionarioAtual = null;
+        let tipoAcesso = null;
+
+        async function abrirModalFacial(funcionarioId, nome, empresa, tipo) {
+            // abrir modal e iniciar reconhecimento automático entre todos os funcionários
+            funcionarioAtual = null; // deixamos o servidor identificar quem é
+            tipoAcesso = tipo;
+
+            document.getElementById('modalFacial').classList.add('active');
+            document.getElementById('modalTitle').textContent = `Registrar ${tipo.toUpperCase()}`;
+            document.getElementById('infoNome').textContent = nome || '';
+            document.getElementById('infoEmpresa').textContent = empresa || '';
+            document.getElementById('funcInfo').style.display = 'block';
+            document.getElementById('btnCapture').style.display = 'none';
+            document.getElementById('statusMsg').textContent = '⏳ Inicializando câmera...';
+            document.getElementById('statusMsg').className = 'recognition-status loading';
+
+            await iniciarCamera();
+
+            // iniciar reconhecimento automático em loop
+            startAutoRecognition();
+        }
+
+        async function iniciarCamera() {
+            try {
+                const video = document.getElementById('videoFacial');
+                console.log('Solicitando permissão da câmera...');
+                // garantir autoplay funcionando
+                video.muted = true;
+                video.playsInline = true;
+                const constraints = { video: { facingMode: 'user' }, audio: false };
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('Câmera iniciada', videoStream);
+                video.srcObject = videoStream;
+                try {
+                    await video.play();
+                } catch (playErr) {
+                    console.warn('Erro ao dar play no vídeo:', playErr);
+                    await new Promise(resolve => { video.onloadedmetadata = () => resolve(); setTimeout(resolve, 1000); });
+                }
+
+                // pequena espera para o vídeo obter dimensões
+                await new Promise(resolve => setTimeout(resolve, 300));
+                const statusMsg = document.getElementById('statusMsg');
+                const btn = document.getElementById('btnCapture');
+                if (video.videoWidth && video.videoHeight) {
+                    statusMsg.textContent = '👀 Câmera pronta. Posicione o rosto e clique em "Capturar e Registrar"';
+                    statusMsg.className = 'recognition-status loading';
+                    if (btn) btn.style.display = 'inline-block';
+                } else {
+                    console.warn('Vídeo iniciado mas dimensões zero:', video.videoWidth, video.videoHeight);
+                    statusMsg.textContent = '⚠️ Câmera iniciada, mas sem dados de vídeo. Verifique permissões/driver.';
+                    statusMsg.className = 'recognition-status error';
+                    if (btn) btn.style.display = 'inline-block';
+                }
+            } catch (err) {
+                console.error('Erro iniciarCamera:', err);
+                let msg = '❌ Erro ao acessar câmera.';
+                if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError' || err.name === 'PermissionDeniedError')) {
+                    msg = '❌ Permissão de câmera negada. Verifique o bloqueio na barra do navegador e permita o acesso.';
+                } else if (err && err.name === 'NotFoundError') {
+                    msg = '❌ Nenhuma câmera encontrada no dispositivo.';
+                } else if (err && err.message) {
+                    msg = '❌ ' + err.message;
+                }
+                document.getElementById('statusMsg').textContent = msg;
+                document.getElementById('statusMsg').className = 'recognition-status error';
             }
+        }
+
+        // reconhecimento automático: captura frames e envia ao endpoint que procura entre todos os funcionários
+        let _autoRecognitionRunning = false;
+        let _stopAutoRecognition = null;
+
+        function stopAutoRecognition() {
+            if (_stopAutoRecognition) _stopAutoRecognition();
+            _stopAutoRecognition = null;
+            _autoRecognitionRunning = false;
+        }
+
+        function startAutoRecognition() {
+            if (_autoRecognitionRunning) return;
+            _autoRecognitionRunning = true;
+            let cancelled = false;
+            _stopAutoRecognition = () => { cancelled = true; };
+
+            (async function loop() {
+                const statusMsg = document.getElementById('statusMsg');
+                while (!cancelled) {
+                    try {
+                        await new Promise(r => setTimeout(r, 700));
+                        const video = document.getElementById('videoFacial');
+                        if (!video || !video.srcObject) continue;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const dataURL = canvas.toDataURL('image/jpeg');
+
+                        statusMsg.textContent = '🔎 Verificando rosto...';
+                        statusMsg.className = 'recognition-status loading';
+
+                        const resp = await fetch('{% url "recognize_and_register_auto" %}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                            body: JSON.stringify({ tipo: tipoAcesso, imagem: dataURL })
+                        });
+
+                        const data = await resp.json();
+                        if (data && data.sucesso) {
+                            statusMsg.textContent = `✅ ${data.mensagem}`;
+                            statusMsg.className = 'recognition-status success';
+                            // atualizar DOM sem reload
+                            try { handleRecognitionSuccess(data); } catch (e) { console.warn('handleRecognitionSuccess failed', e); }
+                            cancelled = true;
+                            break;
+                        } else {
+                            // sem match, continuar
+                            console.log('Reconhecimento sem match:', data && data.erro);
+                            statusMsg.textContent = '👀 Aguardando reconhecimento...';
+                            statusMsg.className = 'recognition-status loading';
+                        }
+                    } catch (err) {
+                        console.error('Auto recognition error:', err);
+                        const statusMsg = document.getElementById('statusMsg');
+                        statusMsg.textContent = '❌ Erro no reconhecimento: ' + (err.message || err);
+                        statusMsg.className = 'recognition-status error';
+                        cancelled = true;
+                        break;
+                    }
+                }
+                _autoRecognitionRunning = false;
+            })();
+        }
+
+        async function captureAndSend() {
+            const statusMsg = document.getElementById('statusMsg');
+            const btn = document.getElementById('btnCapture');
+            if (btn) btn.disabled = true;
+            statusMsg.textContent = '⏳ Capturando imagem e verificando...';
+            statusMsg.className = 'recognition-status loading';
+
+            try {
+                const video = document.getElementById('videoFacial');
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/jpeg');
+
+                const resp = await fetch('{% url "recognize_and_register_ajax" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: JSON.stringify({ funcionario_id: funcionarioAtual && funcionarioAtual.id, tipo: tipoAcesso, imagem: dataURL })
+                });
+
+                const data = await resp.json();
+                if (data.sucesso) {
+                    statusMsg.textContent = `✅ ${data.mensagem}`;
+                    statusMsg.className = 'recognition-status success';
+                    try { handleRecognitionSuccess(data); } catch (e) { console.warn('handleRecognitionSuccess failed', e); fecharModal(); location.reload(); }
+                } else {
+                    statusMsg.textContent = `❌ ${data.erro || 'Falha no reconhecimento'}`;
+                    statusMsg.className = 'recognition-status error';
+                    if (btn) btn.disabled = false;
+                }
+            } catch (err) {
+                statusMsg.textContent = `❌ Erro: ${err.message}`;
+                statusMsg.className = 'recognition-status error';
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function fecharModal() {
+            document.getElementById('modalFacial').classList.remove('active');
+            stopAutoRecognition();
+            if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+            funcionarioAtual = null; tipoAcesso = null;
+        }
+
+        // Start global auto recognition (detached from individual employee buttons)
+        async function startGlobalRecognition(tipo) {
+            tipoAcesso = tipo;
+            document.getElementById('funcInfo').style.display = 'none';
+            document.getElementById('btnCapture').style.display = 'none';
+            document.getElementById('modalFacial').classList.add('active');
+            document.getElementById('modalTitle').textContent = tipo === 'entrada' ? 'Auto Entrada' : 'Auto Saida';
+            document.getElementById('statusMsg').textContent = '⏳ Inicializando câmera...';
+            document.getElementById('statusMsg').className = 'recognition-status loading';
+            await iniciarCamera();
+            startAutoRecognition();
+        }
+
+        function handleRecognitionSuccess(data) {
+            const funcId = data.funcionario_id;
+            const tipo = data.tipo;
+            const hora = data.hora;
+            const card = document.getElementById('card-' + funcId);
+            let prev = null;
+            if (card) {
+                if (card.classList.contains('nao-chegou')) prev = 'nao-chegou';
+                else if (card.classList.contains('entrada')) prev = 'entrada';
+                else if (card.classList.contains('saida')) prev = 'saida';
+
+                card.classList.remove('nao-chegou', 'entrada', 'saida');
+                card.classList.add(tipo);
+
+                const badge = card.querySelector('.status-badge');
+                if (badge) {
+                    badge.className = 'status-badge ' + tipo;
+                    badge.textContent = (tipo === 'entrada') ? 'Entrada registrada' : 'Saida registrada';
+                }
+
+                const horarios = card.querySelector('.horarios');
+                if (horarios) {
+                    if (tipo === 'entrada') {
+                        let entradaEl = horarios.querySelector('.entrada-hora');
+                        if (!entradaEl) {
+                            const div = document.createElement('div');
+                            div.className = 'entrada-hora';
+                            div.innerHTML = `<span class="label">Entrada:</span> ${hora}`;
+                            horarios.insertBefore(div, horarios.firstChild);
+                        } else {
+                            entradaEl.innerHTML = `<span class="label">Entrada:</span> ${hora}`;
+                        }
+                        // mostrar apenas botão Saida; se não existir, criar
+                        const btnEnt = card.querySelector('.btn-entrada');
+                        let btnSai = card.querySelector('.btn-saida');
+                        if (btnEnt) btnEnt.style.display = 'none';
+                        if (!btnSai) {
+                            const nome = card.querySelector('.funcionario-nome')?.textContent?.trim() || data.funcionario || '';
+                            const empresa = card.querySelector('.funcionario-empresa')?.textContent?.trim() || '';
+                            btnSai = document.createElement('button');
+                            btnSai.className = 'btn-acesso btn-saida';
+                            btnSai.textContent = '📷 Saida';
+                            btnSai.setAttribute('data-func-id', funcId);
+                            btnSai.setAttribute('data-func-nome', nome);
+                            btnSai.setAttribute('data-func-empresa', empresa);
+                            btnSai.addEventListener('click', function(){ abrirModalFacial(this.dataset.funcId, this.dataset.funcNome, this.dataset.funcEmpresa, 'saida'); });
+                            card.appendChild(btnSai);
+                        } else {
+                            btnSai.style.display = 'inline-block';
+                        }
+                    } else if (tipo === 'saida') {
+                        let saidaEl = horarios.querySelector('.saida-hora');
+                        if (!saidaEl) {
+                            const div = document.createElement('div');
+                            div.className = 'saida-hora';
+                            div.innerHTML = `<span class="label">Saida:</span> ${hora}`;
+                            horarios.appendChild(div);
+                        } else {
+                            saidaEl.innerHTML = `<span class="label">Saida:</span> ${hora}`;
+                        }
+                        // esconder ambos os botões após saída
+                        const btnEnt = card.querySelector('.btn-entrada');
+                        const btnSai = card.querySelector('.btn-saida');
+                        if (btnEnt) btnEnt.style.display = 'none';
+                        if (btnSai) btnSai.style.display = 'none';
+                    }
+                }
+
+                updateCountsOnMove(prev, tipo);
+            }
+            // fechar modal e parar câmera
+            fecharModal();
+        }
+
+        function updateCountsOnMove(prev, next) {
+            const elNao = document.getElementById('count-nao-chegou');
+            const elEnt = document.getElementById('count-entrada');
+            const elSai = document.getElementById('count-saida');
+            const toNum = (el) => parseInt((el && el.textContent) || '0', 10) || 0;
+            let nNao = toNum(elNao), nEnt = toNum(elEnt), nSai = toNum(elSai);
+            if (prev === 'nao-chegou') nNao = Math.max(0, nNao - 1);
+            else if (prev === 'entrada') nEnt = Math.max(0, nEnt - 1);
+            else if (prev === 'saida') nSai = Math.max(0, nSai - 1);
+            if (next === 'nao-chegou') nNao += 1;
+            else if (next === 'entrada') nEnt += 1;
+            else if (next === 'saida') nSai += 1;
+            if (elNao) elNao.textContent = nNao;
+            if (elEnt) elEnt.textContent = nEnt;
+            if (elSai) elSai.textContent = nSai;
         }
 
         function getCookie(name) {
@@ -298,21 +724,18 @@
             return cookieValue;
         }
 
-        // Contar status
+        // Contar status ao carregar
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.funcionario-card');
             let nao_chegou = 0, entrada = 0, saida = 0;
-            
-            cards.forEach(card => {
-                if (card.classList.contains('nao-chegou')) nao_chegou++;
-                else if (card.classList.contains('entrada')) entrada++;
-                else if (card.classList.contains('saida')) saida++;
-            });
-            
+            cards.forEach(card => { if (card.classList.contains('nao-chegou')) nao_chegou++; else if (card.classList.contains('entrada')) entrada++; else if (card.classList.contains('saida')) saida++; });
             document.getElementById('count-nao-chegou').textContent = nao_chegou;
             document.getElementById('count-entrada').textContent = entrada;
             document.getElementById('count-saida').textContent = saida;
         });
+
+        // Fechar modal ao clicar fora
+        document.getElementById('modalFacial').addEventListener('click', function(e) { if (e.target === this) { fecharModal(); } });
     </script>
 </body>
 </html>

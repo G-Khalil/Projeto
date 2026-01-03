@@ -1,0 +1,49 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .botao-capturar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s ease;
+        margin-top: 10px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .botao-capturar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    }
+
+    .campo-botao {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f5f7ff;
+        border-left: 4px solid #667eea;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block form_top %}
+{{ block.super }}
+{% if original.id %}
+<div class="campo-botao">
+    <a href="{% url 'capturar_foto_funcionario' original.id %}" class="botao-capturar">
+        📷 Capturar Foto com Webcam
+    </a>
+</div>
+{% endif %}
+{% endblock %}

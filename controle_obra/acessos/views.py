@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+import base64
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -322,6 +323,190 @@ def registrar_acesso_ajax(request):
         return JsonResponse({'erro': str(e)}, status=500)
 
 
+def recognize_and_register_ajax(request):
+    """
+    Recebe imagem (base64) do cliente, compara com encoding armazenado em
+    `Funcionario.facial_data` usando `face_recognition` e registra entrada/saída.
+    """
+    import json
+    from PIL import Image
+    from io import BytesIO
+
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        funcionario_id = data.get('funcionario_id')
+        tipo = data.get('tipo')
+        imagem = data.get('imagem')
+
+        if not funcionario_id or not tipo or not imagem:
+            return JsonResponse({'erro': 'Dados incompletos'}, status=400)
+
+        funcionario = Funcionario.objects.get(id=funcionario_id)
+
+        facial_data = funcionario.facial_data
+        if not facial_data:
+            return JsonResponse({'erro': 'Funcionário não possui dados faciais'}, status=400)
+
+        try:
+            if isinstance(facial_data, str):
+                facial_json = json.loads(facial_data)
+            else:
+                facial_json = facial_data
+            stored_encoding = facial_json.get('encoding')
+        except Exception:
+            stored_encoding = None
+
+        if not stored_encoding:
+            return JsonResponse({'erro': 'Nenhum encoding facial disponível para este funcionário'}, status=400)
+
+        # decodificar imagem enviada
+        if ',' in imagem:
+            _, imagem = imagem.split(',', 1)
+        img_bytes = base64.b64decode(imagem)
+        pil_img = Image.open(BytesIO(img_bytes)).convert('RGB')
+
+        import numpy as np
+        import face_recognition
+
+        img_array = np.array(pil_img)
+        encodings = face_recognition.face_encodings(img_array)
+        if not encodings:
+            return JsonResponse({'erro': 'Nenhum rosto detectado na imagem'}, status=400)
+
+        captured_encoding = encodings[0]
+        stored_np = np.array(stored_encoding)
+        matches = face_recognition.compare_faces([stored_np], captured_encoding, tolerance=0.5)
+        if not matches or not matches[0]:
+            return JsonResponse({'erro': 'Reconhecimento facial falhou'}, status=403)
+
+        # registrar acesso
+        hoje = timezone.now().date()
+        agora = timezone.now().time()
+
+        acesso, criado = AcessoObra.objects.get_or_create(funcionario=funcionario, data=hoje)
+        if tipo == 'entrada':
+            if acesso.hora_entrada:
+                return JsonResponse({'erro': 'Entrada já registrada'}, status=409)
+            acesso.hora_entrada = agora
+            mensagem = f"✅ Entrada registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        elif tipo == 'saida':
+            if acesso.hora_saida:
+                return JsonResponse({'erro': 'Saída já registrada'}, status=409)
+            acesso.hora_saida = agora
+            mensagem = f"✅ Saída registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        else:
+            return JsonResponse({'erro': 'Tipo inválido'}, status=400)
+
+        acesso.save()
+
+        return JsonResponse({'sucesso': True, 'mensagem': mensagem, 'funcionario': funcionario.nome, 'funcionario_id': funcionario.id, 'tipo': tipo, 'hora': agora.strftime('%H:%M:%S')})
+
+    except Funcionario.DoesNotExist:
+        return JsonResponse({'erro': 'Funcionário não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
+
+
+def recognize_and_register_auto(request):
+    """
+    Recebe imagem (base64) do cliente, compara com todos os encodings
+    armazenados em `Funcionario.facial_data` e registra entrada/saída
+    automaticamente ao encontrar melhor correspondência abaixo do
+    threshold definido.
+    """
+    import json
+    from PIL import Image
+    from io import BytesIO
+
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        tipo = data.get('tipo')
+        imagem = data.get('imagem')
+
+        if not tipo or not imagem:
+            return JsonResponse({'erro': 'Dados incompletos'}, status=400)
+
+        # decodificar imagem enviada
+        if ',' in imagem:
+            _, imagem = imagem.split(',', 1)
+        img_bytes = base64.b64decode(imagem)
+        pil_img = Image.open(BytesIO(img_bytes)).convert('RGB')
+
+        import numpy as np
+        import face_recognition
+
+        img_array = np.array(pil_img)
+        encodings = face_recognition.face_encodings(img_array)
+        if not encodings:
+            return JsonResponse({'erro': 'Nenhum rosto detectado na imagem'}, status=400)
+
+        captured_encoding = encodings[0]
+
+        # Iterar por funcionários que têm facial_data
+        candidatos = Funcionario.objects.exclude(facial_data__isnull=True).exclude(facial_data__exact='')
+        best_match = None
+        best_distance = None
+
+        for func in candidatos:
+            facial_data = func.facial_data
+            try:
+                if isinstance(facial_data, str):
+                    facial_json = json.loads(facial_data)
+                else:
+                    facial_json = facial_data
+                stored_encoding = facial_json.get('encoding')
+            except Exception:
+                stored_encoding = None
+
+            if not stored_encoding:
+                continue
+
+            stored_np = np.array(stored_encoding)
+            # calcular distância
+            dist = face_recognition.face_distance([stored_np], captured_encoding)[0]
+            if best_distance is None or dist < best_distance:
+                best_distance = dist
+                best_match = func
+
+        # threshold ajustável
+        THRESHOLD = 0.55
+        if best_match is None or best_distance is None or best_distance > THRESHOLD:
+            return JsonResponse({'erro': 'Nenhuma correspondência confiável encontrada', 'distance': best_distance}, status=404)
+
+        funcionario = best_match
+
+        # registrar acesso
+        hoje = timezone.now().date()
+        agora = timezone.now().time()
+
+        acesso, criado = AcessoObra.objects.get_or_create(funcionario=funcionario, data=hoje)
+        if tipo == 'entrada':
+            if acesso.hora_entrada:
+                return JsonResponse({'erro': 'Entrada já registrada'}, status=409)
+            acesso.hora_entrada = agora
+            mensagem = f"✅ Entrada registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        elif tipo == 'saida':
+            if acesso.hora_saida:
+                return JsonResponse({'erro': 'Saída já registrada'}, status=409)
+            acesso.hora_saida = agora
+            mensagem = f"✅ Saída registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        else:
+            return JsonResponse({'erro': 'Tipo inválido'}, status=400)
+
+        acesso.save()
+
+        return JsonResponse({'sucesso': True, 'mensagem': mensagem, 'funcionario': funcionario.nome, 'funcionario_id': funcionario.id, 'tipo': tipo, 'hora': agora.strftime('%H:%M:%S'), 'distance': best_distance})
+
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)
+
+
 def lista_funcionarios_entrada_saida(request):
     """
     Lista de funcionarios com status de entrada/saida.
@@ -347,7 +532,7 @@ def lista_funcionarios_entrada_saida(request):
         
         # Determinar status
         if acesso_hoje is None:
-            status = 'nao_chegou'  # Vermelho
+            status = 'nao-chegou'  # Vermelho (hyphen for CSS/JS)
             status_display = 'Nao chegou'
             hora_entrada = None
             hora_saida = None
@@ -370,7 +555,7 @@ def lista_funcionarios_entrada_saida(request):
             'status_display': status_display,
             'hora_entrada': hora_entrada,
             'hora_saida': hora_saida,
-            'tem_foto': hasattr(func, 'foto_biometrica') and func.foto_biometrica,
+            'tem_foto': bool(func.foto),
         })
     
     context = {

@@ -1,0 +1,12 @@
+Collecting Django
+  Using cached django-5.2.9-py3-none-any.whl (8.3 MB)
+Collecting tzdata
+  Using cached tzdata-2025.3-py2.py3-none-any.whl (348 kB)
+Collecting sqlparse>=0.3.1
+  Using cached sqlparse-0.5.5-py3-none-any.whl (46 kB)
+Collecting asgiref>=3.8.1
+  Using cached asgiref-3.11.0-py3-none-any.whl (24 kB)
+Collecting typing_extensions>=4
+  Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Installing collected packages: tzdata, typing_extensions, sqlparse, asgiref, Django
+Successfully installed Django-5.2.9 asgiref-3.11.0 sqlparse-0.5.5 typing_extensions-4.15.0 tzdata-2025.3
