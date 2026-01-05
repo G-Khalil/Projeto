@@ -10,6 +10,9 @@ from io import BytesIO
 import json
 import os
 import tempfile
+import numpy as np
+import face_recognition
+from django.core.files import File
 
 
 def capturar_foto_funcionario(request, funcionario_id=None):
@@ -17,7 +20,6 @@ def capturar_foto_funcionario(request, funcionario_id=None):
     Página para capturar foto da webcam
     """
     funcionario = get_object_or_404(Funcionario, id=funcionario_id)
-
     context = {
         'funcionario': funcionario,
         'funcionario_id': funcionario.id,
@@ -32,9 +34,6 @@ def salvar_foto_funcionario(request):
     e redireciona de volta para o admin.
     Também captura e salva os dados de reconhecimento facial.
     """
-    import numpy as np
-    import face_recognition
-    
     try:
         data = json.loads(request.body.decode('utf-8'))
         funcionario_id = data.get('funcionario_id')
@@ -64,7 +63,7 @@ def salvar_foto_funcionario(request):
         try:
             image_array = np.array(img)
             face_encodings = face_recognition.face_encodings(image_array)
-            
+
             if face_encodings:
                 # Pega o primeiro rosto detectado
                 facial_encoding = face_encodings[0].tolist()
@@ -86,7 +85,6 @@ def salvar_foto_funcionario(request):
             })
 
         # caminho dentro de MEDIA_ROOT/funcionarios/
-        from django.core.files import File
         file_name = f'funcionario_{funcionario.id}.jpg'
         with open(temp_file.name, 'rb') as f:
             funcionario.foto.save(file_name, File(f), save=False)
