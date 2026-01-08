@@ -1,0 +1,52 @@
+========== SETUP RAPIDO - CONTROLE DE OBRA COM RECONHECIMENTO FACIAL ===========
+
+TUDO JA ESTA PRONTO! Siga esses 6 passos:
+
+
+1. CLONAR E ENTRAR NA PASTA
+   cd Projeto/controle_obra
+
+
+2. CRIAR AMBIENTE VIRTUAL
+   python -m venv venv
+   venv\Scripts\activate       # Windows
+   source venv/bin/activate    # Linux/Mac
+
+
+3. INSTALAR DEPENDENCIAS
+   pip install -r requirements.txt
+
+
+4. EDITAR settings.py
+   Abra: controle_obra/settings.py
+   
+   Encontre INSTALLED_APPS e adicione:
+   'materiais',
+
+
+5. EDITAR urls.py
+   Abra: controle_obra/urls.py
+   
+   Adicione na lista urlpatterns:
+   path('materiais/', include('materiais.urls')),
+
+
+6. CRIAR BANCO DE DADOS E RODAR
+   python manage.py makemigrations
+   python manage.py migrate
+   python manage.py runserver
+
+   Acesse: http://127.0.0.1:8000/admin/
+
+
+========== FIM ==========
+
+Agora voce pode gerenciar:
+- Materiais de Devolucao (ferramentas)
+- Rastrear emprestimos com reconhecimento facial
+- Materiais de Consumo (insumos)
+- Ver historico completo
+
+Documentacao completa em:
+- controle_obra/INSTALACAO.md
+- controle_obra/materiais/README.md
