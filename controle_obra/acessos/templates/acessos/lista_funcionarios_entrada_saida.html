@@ -52,6 +52,8 @@
             <a href="/admin/" class="btn btn-back">← Voltar ao Admin</a>
             <h1>Registro de Entrada/Saída</h1>
             <button class="btn btn-auto" onclick="abrirModalAuto()">📷 Auto-Reconhecimento</button>
+                    <button class="btn btn-auto" onclick="exportarExcelMensal()" style="margin-left: 10px; background: #10b981;">📊 Excel Mensal</button>
+                    <button class="btn btn-auto" onclick="exportarExcelDiario()" style="margin-left: 10px; background: #f59e0b;">📄 Excel Hoje</button>
         </div>
 
         {% for grupo in empresas_agrupadas %}
@@ -201,6 +203,17 @@
                 } catch(e) { console.error(e); }
             }
         }
+
+            // Funções de exportação Excel
+            function exportarExcelMensal() {
+                        const mes = prompt('Digite o mês (1-12):', new Date().getMonth() + 1);
+                        const ano = prompt('Digite o ano:', new Date().getFullYear());
+                        if (mes && ano) window.location.href = `/acessos/exportar_excel_mensal/?mes=${mes}&ano=${ano}`;
+                    }
+
+            function exportarExcelDiario() {
+                        window.location.href = '/acessos/exportar_excel_diario/';
+                    }
     </script>
 </body>
 </html>
