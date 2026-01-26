@@ -320,7 +320,7 @@ def exportar_excel_mensal(request):
         ano = int(request.GET.get('ano', timezone.now().year))
 
     # Buscar acessos do mês
-            acessos = AcessoObra.objects.filter(data__month=mes, data__year=ano).select_related('funcionario')
+                acessos = AcessoObra.objects.filter(data__month=mes, data__year=ano).select_related('funcionario')
 
     # Criar workbook
     wb = Workbook()
