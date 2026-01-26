@@ -10,4 +10,7 @@ urlpatterns = [
     path('api/recognize-register/', views.recognize_and_register_ajax, name='recognize_and_register_ajax'),
     path('api/recognize-register-auto/', views.recognize_and_register_auto, name='recognize_and_register_auto'),
     path('lista-funcionarios/', views.lista_funcionarios_entrada_saida, name='lista_funcionarios_entrada_saida'),
+        path('exportar_excel_mensal/', views.exportar_excel_mensal, name='exportar_excel_mensal'),
+        path('exportar_excel_diario/', views.exportar_excel_diario, name='exportar_excel_diario'),
 ]
+
