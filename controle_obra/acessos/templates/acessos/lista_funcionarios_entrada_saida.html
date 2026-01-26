@@ -187,6 +187,11 @@
                     if(data.sucesso) {
                         m.className = "status-msg success";
                         m.innerText = "✅ Reconhecido: " + data.funcionario + " - " + tAcc.toUpperCase();
+                                            // Mostrar foto cadastrada se for auto-reconhecimento
+                                            if(isAuto && data.foto_url) {
+                                                                        regBox.style.display = "block";
+                                                                        fReg.src = data.foto_url;
+                                                                    }
                         loop = false;
                         setTimeout(() => location.reload(), 2000);
                     } else {
