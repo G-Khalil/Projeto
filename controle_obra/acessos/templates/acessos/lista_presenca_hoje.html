@@ -55,6 +55,12 @@
 <body>
     <div class="header">
         <h1>📋 Presença - Leben 225 | {{ data|date:"d/m/Y" }}</h1>
+                <form method="get" style="display: flex; gap: 10px; align-items: center; margin: 15px 0;">
+            <label style="font-weight: bold; color: #1f2933;">Filtrar Data:</label>
+            <input type="date" name="data" value="{{ data|date:'Y-m-d' }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+            <button type="submit" class="btn btn-admin" style="background: #3b82f6;">🔍 Buscar</button>
+            <a href="/acessos/hoje/" class="btn btn-admin">📅 Hoje</a>
+        </form>
         <div class="btn-group">
             <a href="/admin/" class="btn btn-admin">← Voltar</a>
             <a href="{% url 'exportar_relatorio_diario' %}?data={{ data|date:'Y-m-d' }}" class="btn btn-relatorio">📊 Baixar Relatório Diário</a>
@@ -95,3 +101,4 @@
     </div>
 </body>
 </html>
+
