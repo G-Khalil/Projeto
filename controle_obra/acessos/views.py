@@ -21,7 +21,7 @@ def lista_presenca_hoje(request):
     data_str = request.GET.get('data', timezone.now().strftime('%Y-%m-%d'))
     hoje = datetime.strptime(data_str, '%Y-%m-%d').date()
     dados_empresas = []
-        empresas = Empresa.objects.all().order_by('nome')
+    empresas = Empresa.objects.all().order_by('nome')
          
     for empresa in empresas:
 
@@ -311,6 +311,7 @@ def lista_funcionarios_entrada_saida(request):
             lista_final.append({'empresa': empresa.nome, 'funcionarios': funcs_status})
 
     return render(request, 'acessos/lista_funcionarios_entrada_saida.html', {'empresas_agrupadas': lista_final, 'data': hoje})
+
 
 
 
