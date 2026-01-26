@@ -320,7 +320,7 @@ def exportar_excel_mensal(request):
         ano = int(request.GET.get('ano', timezone.now().year))
 
     # Buscar acessos do mês
-    acessos = AcessoObra.objects.filter(data__month=mes, data__year=ano).select_related('funcionario')
+        acessos = AcessoObra.objects.filter(data__month=mes, data__year=ano).select_related('funcionario')
 
     # Criar workbook
     wb = Workbook()
@@ -346,28 +346,29 @@ def exportar_excel_mensal(request):
     return response
 
 
-def exportar_excel_diario(request):
-        """Exporta relatório de acessos do dia atual em Excel."""
-        hoje = timezone.now().date()
-        acessos = AcessoObra.objects.filter(data=hoje).select_related('funcionario')
-
-    wb = Workbook()
-    ws = wb.active
+        def exportar_excel_diario(request):
+                """Exporta relatório de acessos do dia atual em Excel."""
+                hoje = timezone.now().date()
+            acessos = AcessoObra.objects.filter(data=hoje).select_related('funcionario')
+    
+        wb = Workbook()
+        ws = wb.active
     ws.title = f'Acessos {hoje}'
     ws.append(['Data', 'Funcionário', 'Hora Entrada', 'Hora Saída'])
     for acesso in acessos:
                 ws.append([str(acesso.data), acesso.funcionario.nome, str(acesso.hora_entrada) if acesso.hora_entrada else '', str(acesso.hora_saida) if acesso.hora_saida else ''])
 
     output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="acessos_{hoje}.xlsx"'
+        wb.save(output)
+        output.seek(0)
+    
+        response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="acessos_{hoje}.xlsx"'
     return response
 
-
-
+    
+    
+    
 
 
 
