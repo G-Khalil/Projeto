@@ -4,6 +4,10 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 import base64
 import json
+from PIL import Image
+from io import BytesIO
+import numpy as np
+import face_recognition
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from acessos.models import AcessoObra
@@ -11,8 +15,10 @@ from empresas.models import Empresa
 from funcionarios.models import Funcionario
 
 def lista_presenca_hoje(request):
+    """
+    Tela de presença de hoje agrupada por empresa.
+    """
     hoje = timezone.now().date()
-    # Separar por empresa
     empresas = Empresa.objects.all().order_by('nome')
     dados_empresas = []
     
@@ -38,7 +44,75 @@ def lista_presenca_hoje(request):
     }
     return render(request, 'acessos/lista_presenca_hoje.html', context)
 
+def exportar_relatorio_mensal(request):
+    """
+    Relatório mensal de presença em Excel (Restaurado).
+    """
+    hoje = timezone.now()
+    mes = int(request.GET.get('mes', hoje.month))
+    ano = int(request.GET.get('ano', hoje.year))
+    
+    primeiro_dia = datetime(ano, mes, 1).date()
+    if mes == 12:
+        ultimo_dia = datetime(ano + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        ultimo_dia = datetime(ano, mes + 1, 1).date() - timedelta(days=1)
+    total_dias_mes = (ultimo_dia - primeiro_dia).days + 1
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Presenca_{mes:02d}_{ano}"
+    
+    # Estilos
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    center_align = Alignment(horizontal="center", vertical="center")
+    
+    ws.merge_cells('A1:F1')
+    title = ws['A1']
+    title.value = f"RELATORIO DE PRESENCA - {mes:02d}/{ano}"
+    title.font = Font(bold=True, size=14, color="FFFFFF")
+    title.fill = PatternFill(start_color="203864", end_color="203864", fill_type="solid")
+    title.alignment = center_align
+    
+    headers = ["Funcionário", "Empresa", "Dias Presentes", "Dias Ausentes", "Total de Dias", "Percentual"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = border
+
+    row = 4
+    funcionarios = Funcionario.objects.all().order_by('nome')
+    for funcionario in funcionarios:
+        acessos_func = AcessoObra.objects.filter(funcionario=funcionario, data__gte=primeiro_dia, data__lte=ultimo_dia)
+        presentes = acessos_func.values('data').distinct().count()
+        ausentes = max(0, total_dias_mes - presentes)
+        total = total_dias_mes
+        percentual = (presentes / total) * 100 if total > 0 else 0
+        
+        ws.cell(row=row, column=1, value=funcionario.nome).border = border
+        ws.cell(row=row, column=2, value=funcionario.empresa.nome if funcionario.empresa else "N/A").border = border
+        ws.cell(row=row, column=3, value=presentes).border = border
+        ws.cell(row=row, column=4, value=ausentes).border = border
+        ws.cell(row=row, column=5, value=total).border = border
+        ws.cell(row=row, column=6, value=f"{percentual:.1f}%").border = border
+        row += 1
+
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 20
+    
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="relatorio_presenca_{mes:02d}_{ano}.xlsx"'
+    wb.save(response)
+    return response
+
 def exportar_relatorio_diario(request):
+    """
+    Novo relatório diário agrupado por empresa.
+    """
     data_str = request.GET.get('data', timezone.now().strftime('%Y-%m-%d'))
     data_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
     
@@ -46,7 +120,6 @@ def exportar_relatorio_diario(request):
     ws = wb.active
     ws.title = f"Presenca_{data_str}"
     
-    # Estilos (Mantendo seu padrão)
     header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
     border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
@@ -84,14 +157,125 @@ def exportar_relatorio_diario(request):
             row += 1
         row += 1
 
+    ws.column_dimensions['A'].width = 30
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="presenca_{data_str}.xlsx"'
     wb.save(response)
     return response
 
-def lista_funcionarios_entrada_saida(request):
+def registrar_entrada_saida(request):
+    """
+    Página dedicada para registro de entrada/saída com reconhecimento facial (Restaurado).
+    """
     hoje = timezone.now().date()
-    # Agrupar por empresa
+    acessos_hoje = AcessoObra.objects.filter(data=hoje).select_related('funcionario', 'funcionario__empresa').order_by('-id')[:10]
+    funcionarios = Funcionario.objects.all().order_by('nome')
+    context = {'acessos_hoje': acessos_hoje, 'funcionarios': funcionarios, 'data': hoje}
+    return render(request, 'acessos/registrar_entrada_saida.html', context)
+
+def registrar_acesso_ajax(request):
+    """
+    API AJAX para registrar entrada/saída (Restaurado).
+    """
+    if request.method != 'POST': return JsonResponse({'erro': 'Método não permitido'}, status=400)
+    try:
+        data = json.loads(request.body)
+        funcionario_id = data.get('funcionario_id')
+        tipo = data.get('tipo')
+        funcionario = Funcionario.objects.get(id=funcionario_id)
+        hoje = timezone.now().date()
+        agora = timezone.now().time()
+        acesso, criado = AcessoObra.objects.get_or_create(funcionario=funcionario, data=hoje)
+        if tipo == 'entrada':
+            acesso.hora_entrada = agora
+            mensagem = f"✅ Entrada registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        elif tipo == 'saida':
+            acesso.hora_saida = agora
+            mensagem = f"✅ Saída registrada para {funcionario.nome} às {agora.strftime('%H:%M')}"
+        else: return JsonResponse({'erro': 'Tipo inválido'}, status=400)
+        acesso.save()
+        return JsonResponse({'sucesso': True, 'mensagem': mensagem, 'funcionario': funcionario.nome, 'tipo': tipo, 'hora': agora.strftime('%H:%M:%S')})
+    except Exception as e: return JsonResponse({'erro': str(e)}, status=500)
+
+def recognize_and_register_ajax(request):
+    """
+    Reconhecimento facial para funcionário específico (Restaurado).
+    """
+    if request.method != 'POST': return JsonResponse({'erro': 'Método não permitido'}, status=400)
+    try:
+        data = json.loads(request.body)
+        funcionario_id = data.get('funcionario_id')
+        tipo = data.get('tipo')
+        imagem = data.get('imagem')
+        funcionario = Funcionario.objects.get(id=funcionario_id)
+        if not funcionario.facial_data: return JsonResponse({'erro': 'Sem dados faciais'}, status=400)
+        
+        # Processamento de imagem
+        if ',' in imagem: _, imagem = imagem.split(',', 1)
+        img_bytes = base64.b64decode(imagem)
+        pil_img = Image.open(BytesIO(img_bytes)).convert('RGB')
+        img_array = np.array(pil_img)
+        encodings = face_recognition.face_encodings(img_array)
+        if not encodings: return JsonResponse({'erro': 'Nenhum rosto detectado'}, status=400)
+        
+        facial_json = json.loads(funcionario.facial_data) if isinstance(funcionario.facial_data, str) else funcionario.facial_data
+        stored_encoding = np.array(facial_json.get('encoding'))
+        matches = face_recognition.compare_faces([stored_encoding], encodings[0], tolerance=0.5)
+        if not matches[0]: return JsonResponse({'erro': 'Reconhecimento falhou'}, status=403)
+        
+        hoje = timezone.now().date()
+        agora = timezone.now().time()
+        acesso, criado = AcessoObra.objects.get_or_create(funcionario=funcionario, data=hoje)
+        if tipo == 'entrada': acesso.hora_entrada = agora
+        elif tipo == 'saida': acesso.hora_saida = agora
+        acesso.save()
+        return JsonResponse({'sucesso': True, 'mensagem': f'Acesso {tipo} registrado!', 'funcionario': funcionario.nome, 'hora': agora.strftime('%H:%M')})
+    except Exception as e: return JsonResponse({'erro': str(e)}, status=500)
+
+def recognize_and_register_auto(request):
+    """
+    Reconhecimento facial automático entre todos os funcionários (Restaurado).
+    """
+    if request.method != 'POST': return JsonResponse({'erro': 'Método não permitido'}, status=400)
+    try:
+        data = json.loads(request.body)
+        tipo = data.get('tipo')
+        imagem = data.get('imagem')
+        if ',' in imagem: _, imagem = imagem.split(',', 1)
+        img_bytes = base64.b64decode(imagem)
+        pil_img = Image.open(BytesIO(img_bytes)).convert('RGB')
+        img_array = np.array(pil_img)
+        encodings = face_recognition.face_encodings(img_array)
+        if not encodings: return JsonResponse({'erro': 'Nenhum rosto detectado'}, status=400)
+        
+        candidatos = Funcionario.objects.exclude(facial_data__isnull=True).exclude(facial_data__exact='')
+        best_match = None
+        best_distance = 1.0
+        
+        for func in candidatos:
+            facial_json = json.loads(func.facial_data) if isinstance(func.facial_data, str) else func.facial_data
+            stored_encoding = np.array(facial_json.get('encoding'))
+            dist = face_recognition.face_distance([stored_encoding], encodings[0])[0]
+            if dist < best_distance:
+                best_distance = dist
+                best_match = func
+        
+        if best_match and best_distance < 0.55:
+            hoje = timezone.now().date()
+            agora = timezone.now().time()
+            acesso, criado = AcessoObra.objects.get_or_create(funcionario=best_match, data=hoje)
+            if tipo == 'entrada': acesso.hora_entrada = agora
+            elif tipo == 'saida': acesso.hora_saida = agora
+            acesso.save()
+            return JsonResponse({'sucesso': True, 'funcionario': best_match.nome, 'tipo': tipo, 'hora': agora.strftime('%H:%M')})
+        return JsonResponse({'erro': 'Não reconhecido'}, status=404)
+    except Exception as e: return JsonResponse({'erro': str(e)}, status=500)
+
+def lista_funcionarios_entrada_saida(request):
+    """
+    Lista de funcionários agrupada por empresa com status de entrada/saída.
+    """
+    hoje = timezone.now().date()
     empresas = Empresa.objects.all().order_by('nome')
     lista_final = []
     
