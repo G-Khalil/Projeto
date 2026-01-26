@@ -269,8 +269,7 @@ def recognize_and_register_auto(request):
             acesso, criado = AcessoObra.objects.get_or_create(funcionario=best_match, data=hoje)
             if tipo == 'entrada': acesso.hora_entrada = agora
             elif tipo == 'saida': acesso.hora_saida = agora
-            acesso.save()
-                return JsonResponse({'sucesso': True, 'funcionario': best_match.nome, 'tipo': tipo, 'hora': agora.strftime('%H:%M'), 'foto_url': best_match.foto.url if best_match.foto else None})
+            acesso                return JsonResponse({'sucesso': True, 'funcionario': best_match.nome, 'tipo': tipo, 'hora': agora.strftime('%H:%M'), 'foto_url': best_match.foto.url if best_match.foto else None})
         return JsonResponse({'erro': 'Não reconhecido'}, status=404)
     except Exception as e: return JsonResponse({'erro': str(e)}, status=500)
 
@@ -311,6 +310,7 @@ def lista_funcionarios_entrada_saida(request):
             lista_final.append({'empresa': empresa.nome, 'funcionarios': funcs_status})
 
     return render(request, 'acessos/lista_funcionarios_entrada_saida.html', {'empresas_agrupadas': lista_final, 'data': hoje})
+
 
 
 
