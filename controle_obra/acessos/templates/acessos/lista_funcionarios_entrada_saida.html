@@ -39,7 +39,12 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align: center; margin-bottom: 30px;">Registro de Entrada/Saída</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <a href="/admin/" style="padding: 10px 20px; background: #64748b; color: white; text-decoration: none; border-radius: 6px;">← Voltar</a>
+    <h1>Registro de Entrada/Saída</h1>
+    <button onclick="abrirModalAuto()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📷 Auto-Reconhecimento</button>
+</div>
+
         {% for grupo in empresas_agrupadas %}
             <div class="empresa-section">
                 <div class="empresa-header">{{ grupo.empresa }}</div>
@@ -126,6 +131,45 @@
                 } catch(e) { console.error(e); }
             }
         }
+        async function abrirModalAuto() {
+    fId = null; tAcc = 'entrada'; loop = true;
+    document.getElementById('modalFacial').classList.add('active');
+    document.getElementById('mTitle').innerText = "Reconhecimento Automático";
+    document.getElementById('fReg').parentElement.style.display = "none";
+    const v = document.getElementById('v');
+    stream = await navigator.mediaDevices.getUserMedia({video: true});
+    v.srcObject = stream;
+    startRecAuto();
+}
+
+async function startRecAuto() {
+    const m = document.getElementById('msg');
+    while(loop) {
+        await new Promise(r => setTimeout(r, 1000));
+        if(!loop) break;
+        const canvas = document.createElement('canvas');
+        canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+        canvas.getContext('2d').drawImage(v, 0, 0);
+        try {
+            const res = await fetch('{% url "recognize_and_register_auto" %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+                body: JSON.stringify({tipo: 'entrada', imagem: canvas.toDataURL('image/jpeg')})
+            });
+            const data = await res.json();
+            if(data.sucesso) {
+                m.className = "status-msg success";
+                m.innerText = "✅ " + data.funcionario + " registrado!";
+                loop = false;
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                m.className = "status-msg loading";
+                m.innerText = "🔎 Procurando rosto...";
+            }
+        } catch(e) { console.error(e); }
+    }
+}
+
     </script>
 </body>
 </html>
