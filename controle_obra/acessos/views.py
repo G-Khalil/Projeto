@@ -1,6 +1,49 @@
-276
 from datetime import datetime, timedelta
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
+import base64
+import json
+from PIL import Image
+from io import BytesIO
+import numpy as np
+import face_recognition
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from acessos.models import AcessoObra
+from empresas.models import Empresa
+from funcionarios.models import Funcionario
 
+def lista_presenca_hoje(request):
+    """
+    Tela de presença de hoje agrupada por empresa.
+    """
+    data_str = request.GET.get('data', timezone.now().strftime('%Y-%m-%d'))
+    hoje = datetime.strptime(data_str, '%Y-%m-%d').date()
+    dados_empresas = []
+    empresas = Empresa.objects.all().order_by('nome')
+    
+    for empresa in empresas:
+        funcionarios = Funcionario.objects.filter(empresa=empresa).order_by('nome')
+        acessos_empresa = []
+        for func in funcionarios:
+            acesso = AcessoObra.objects.filter(funcionario=func, data=hoje).first()
+            acessos_empresa.append({
+                'funcionario': func,
+                'acesso': acesso
+            })
+        
+        if acessos_empresa:
+            dados_empresas.append({
+                'empresa': empresa,
+                'dados': acessos_empresa
+            })
+
+    context = {
+        'dados_empresas': dados_empresas,
+        'data': hoje,
+    }
+    return render(request, 'acessos/lista_presenca_hoje.html', context)
 def lista_funcionarios_entrada_saida(request):
     """
     Lista de funcionários agrupada por empresa com status de entrada/saída.
@@ -105,3 +148,4 @@ def exportar_excel_diario(request):
     response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="acessos_{hoje}.xlsx"'
     return response
+
