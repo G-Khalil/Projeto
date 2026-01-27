@@ -68,6 +68,7 @@
     </div>
     <div class="container">
         {% for empresa_item in dados_empresas %}
+                        <a href="{% url 'exportar_relatorio_mensal' %}" class="btn btn-relatorio" style="background: #059669;">📊 Baixar Relatório Mensal</a>
             <div class="empresa-card">
                 <div class="empresa-title">{{ empresa_item.empresa.nome }}</div>
                 <table>
@@ -101,5 +102,6 @@
     </div>
 </body>
 </html>
+
 
 
