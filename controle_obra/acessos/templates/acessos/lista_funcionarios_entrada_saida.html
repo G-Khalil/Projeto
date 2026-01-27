@@ -80,9 +80,12 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-auto" onclick="exportarExcelMensal()" style="background: #10b981;">📊 Excel Mensal</button>
                 <button class="btn btn-auto" onclick="exportarExcelDiario()" style="background: #f59e0b;">📅 Excel Hoje</button>
+                 <button class="btn btn-auto" onclick="abrirModalAuto('entrada')" style="background: #10b981;">⏱️ Auto Entrada</button>
+                 <button class="btn btn-auto" onclick="abrirModalAuto('saida')" style="background: #ef4444;">⏱️ Auto Saída</button>
             </div>
         </div>
-        {% regroup funcionarios by empresa as empresa_list %}
+        {% regroup funcionarios by empresa as 79
+        %}
         {% for empresa in empresa_list %}
             <div class="empresa-section">
                 <div class="empresa-header">{{ empresa.grouper.nome }}</div>
