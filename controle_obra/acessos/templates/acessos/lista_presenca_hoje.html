@@ -63,7 +63,7 @@
         </form>
         <div class="btn-group">
             <a href="/admin/" class="btn btn-admin">← Voltar</a>
-            <a href="{% url 'exportar_relatorio_diario' %}?data={{ data|date:'Y-m-d' }}" class="btn btn-relatorio">📊 Baixar Relatório Diário</a>
+            <a href="{% url 'exportar_excel_diario' %}?data={{ data|date:'Y-m-d' }}" class="btn btn-relatorio">📊 Baixar Relatório Diário</a>
         </div>
     </div>
     <div class="container">
@@ -101,4 +101,5 @@
     </div>
 </body>
 </html>
+
 
