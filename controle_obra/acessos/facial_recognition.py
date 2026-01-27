@@ -30,6 +30,13 @@ class FacialRecognitionSystem:
                 except Exception as e:
                     print(f"Erro ao processar foto de {funcionario.nome}: {e}")
 
+        def reload_funcionarios(self):
+        """Recarrega os dados faciais de todos os funcionários."""
+        self.known_face_encodings = []
+        self.known_face_names = []
+        self.known_funcionario_ids = []
+        self.load_funcionarios()
+
     def recognize_face(self, frame):
         small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
         rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
@@ -110,3 +117,4 @@ class FacialRecognitionSystem:
         cap.release()
         cv2.destroyAllWindows()
         return None
+
