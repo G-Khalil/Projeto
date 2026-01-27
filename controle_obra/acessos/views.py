@@ -274,7 +274,8 @@ def recognize_and_register_auto(request):
         return JsonResponse({'error': 'Não reconhecido'}, status=404)
     except Exception as e: return JsonResponse({'erro': str(e)}, status=500)
 
-def lista_funcionarios_entrada_saida(request):
+327
+(request):
     """
     Lista de funcionários agrupada por empresa com status de entrada/saída.
     """
@@ -308,9 +309,23 @@ def lista_funcionarios_entrada_saida(request):
                 'foto_url': func.foto.url if func.foto else None
             })
         if funcs_status:
+                
+    # Calcular contagens
+    presentes_count = 0
+    ausentes_count = 0
+    saidas_count = 0
+    
+    for empresa_data in lista_final:
+        for func in empresa_data['funcionarios']:
+            if func['status'] == 'entrada':
+                presentes_count += 1
+            elif func['status'] == 'saida':
+                saidas_count += 1
+            else:  # nao-chegou
+                ausentes_count += 1
             lista_final.append({'empresa': empresa.nome, 'funcionarios': funcs_status})
 
-    return render(request, 'acessos/lista_funcionarios_entrada_saida.html', {'empresas_agrupadas': lista_final, 'data': hoje})
+    return render(request, 'acessos/lista_funcionarios_entrada_saida.html', {'empresas_agrupadas': lista_final, 'data': hoje, 'presentes_count': presentes_count, 'ausentes_count': ausentes_count, 'saidas_count': saidas_count})
 
 
 
@@ -369,6 +384,7 @@ def exportar_excel_mensal(request):
     
     
     
+
 
 
 
